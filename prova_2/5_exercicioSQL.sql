@@ -130,7 +130,7 @@ WHERE Nome = 'João';
 SELECT CodAtendimento, Valor, Valor * 1.15 AS NovoValor
 FROM Atendimento;
 
--- 6. Recuperar o nome do médico que supervisiona o setor de pediatria. 7. Recuperar o nome de todos os setores onde o médico Carlos trabalha. 8. Recuperar todos os telefones do médico João.
+-- 6. Recuperar o nome do médico que supervisiona o setor de pediatria.
 SELECT M.Nome
 FROM Setor S INNER JOIN Medico M 
     ON S.Supervisor = M.CRM
@@ -185,7 +185,7 @@ WHERE P.CodPaciente IN (
     WHERE M.Nome = 'Ana'
     );
 
--- 14. Recuperar o nome de todos os pacientes cujo nome começa com a letra M. 15. Recuperar a quantidade de atendimentos realizados por cada médico. 16. Recuperar o nome dos médicos que já realizaram mais de um atendimento. 17. Recuperar o valor médio das consultas que não são retorno e foram  realizadas por algum médico alocado no setor 1.
+-- 14. Recuperar o nome de todos os pacientes cujo nome começa com a letra M.
 SELECT P.Nome
 FROM Paciente P
 WHERE P.Nome LIKE 'M%';
@@ -203,14 +203,114 @@ FROM Atendimento A NATURAL INNER JOIN Medico M
 GROUP BY M.Crm, M.Nome
 HAVING COUNT(A.CodAtendimento) > 2
 
-18. Recuperar o nome dos médicos que nunca realizaram atendimento pela  operadora Unimed. 
-19. Recuperar a quantidade de atendimentos particulares realizados por cada  médico da clínica, excluindo os retornos. 
-20. Recuperar a quantidade de atendimentos e o valor total apurado em cada  dia, ordenado pela data em ordem decrescente.  
-21. Recuperar os nomes dos médicos que possuem mais de dois telefones. 22. Recuperar os nomes dos setores que têm menos de dois médicos alocados. 23. Criar uma visão contendo o crm, nome de cada médico com a respectiva  quantidade de atendimentos realizados por cada médico. 
-24. Recuperar o CRM e o nome de todos os médicos da clínica ordenados em  ordem decrescente pela quantidade de atendimentos realizados. 25. Criar uma visão contendo, para cada setor, o seu código, o nome, o nome  do supervisor e a quantidade de médicos alocados.  
-26. Recuperar o código, o nome e o nome do supervisor de cada setor que tem  mais de um médico alocado. 
-27. Criar uma visão contendo, para cada atendimento realizado na clínica, a  data do atendimento, o crm do médico, o nome do médico, o código do  paciente, o nome do paciente e o tipo do atendimento. 
-28. Recuperar o código do paciente, o nome do paciente e o tipo da consulta  para cada atendimento realizado para o médico com CRM 1111-1. 29. Atualizar a operadora dos atendimentos feitos pela operadora Unimed para  Unimed Vida. 
-30. Atualizar o supervisor do setor de Neurologia para o médico com CRM  1111-3. 
-31. Excluir todos os atendimentos realizados pelo médico com CRM 1111-1. 32. Excluir os telefones de todos os médicos da clinica.
-33. Criar um índice para o atributo nome da tabela Médico.
+-- 17. Recuperar o valor médio das consultas que não são retorno e foram realizadas por algum médico alocado no setor 1.
+SELECT AVG(A.Valor) AS ValorMedio
+FROM Atendimento A 
+WHERE AtedAnterior IS NULL AND Crm in (
+    SELECT Crm 
+    FROM SetorMedico
+    WHERE CodSetor = 1
+    );
+
+-- 18. Recuperar o nome dos médicos que nunca realizaram atendimento pela  operadora Unimed.
+SELECT Crm, Nome
+FROM Medico 
+WHERE Crm NOT IN (
+    SELECT Crm
+    FROM Atendimento 
+    WHERE Tipo = 'Unimed'
+    );
+
+ -- 19. Recuperar a quantidade de atendimentos particulares realizados por cada  médico da clínica, excluindo os retornos.
+SELECT M.Crm, M.Nome, COUNT(*) AS AtendimentosParticulares
+FROM Atendimento A NATURAL INNER JOIN Medico M
+WHERE A.Tipo = 'Particular' AND A.AtendAnterior IS NULL
+GROUP BY M.Crm, M.Nome
+ORDER BY AtendimentosParticulares DESC, M.Nome;
+
+ -- 20. Recuperar a quantidade de atendimentos e o valor total apurado em cada  dia, ordenado pela data em ordem decrescente.
+ SELECT Data, SUM(Valor) AS Total 
+ FROM Atendimento
+ GROUP BY Data
+ ORDER BY Data DESC;
+
+-- 21. Recuperar os nomes dos médicos que possuem mais de dois telefones.
+SELECT M.Crm, M.Nome, COUNT(*) AS QuantidadeTelefones
+FROM TelefoneMedico TM NATURAL INNER JOIN Medico M
+GROUP BY M.Crm, M.Nome
+HAVING COUNT(*) > 2
+ORDER BY QuantidadeTelefones DESC, M.Nome;
+
+-- 22. Recuperar os nomes dos setores que têm menos de 3 médicos alocados.
+SELECT S.Nome, COUNT(*) AS QuantidadeMedicos
+FROM SetorMedico SM NATURAL RIGHT INNER JOIN Setor S
+GROUP BY S.CodSetor, S.Nome
+HAVING COUNT(*) < 3
+ORDER BY QuantidadeMedicos DESC;
+
+-- 23. Criar uma visão contendo o crm, nome de cada médico com a respectiva quantidade de atendimentos realizados por cada médico.
+CREATE VIEW VisaoMedico
+AS
+    SELECT M.Crm, M.Nome, COUNT(A.CodAtendimento) AS QuantidadeAtendimentos
+    FROM Atendimento A NATURAL INNER JOIN Medico M
+    WHERE A.AtendAnterior IS NULL
+    GROUP BY M.Crm, M.Nome
+    ORDER BY QuantidadeAtendimentos DESC, M.Nome;
+
+-- 24. Recuperar o CRM e o Nome de todos os médicos da clínica ordenados em  ordem decrescente pela quantidade de atendimentos realizados.
+SELECT Crm, Nome
+FROM VisaoMedico
+ORDER BY QuantidadeAtendimentos DESC, Crm;
+
+-- 25. Criar uma visão contendo, para cada setor, o seu código, o nome, o nome  do supervisor e a quantidade de médicos alocados.
+CREATE VIEW VisaoSetor 
+AS
+    SELECT S.CodSetor, S.Nome AS NomeSetor, M.Nome AS NomeSupervisor, COUNT(SM.CRM) AS QuantidadeMedicos
+    FROM SetorMedico SM NATURAL RIGHT OUTER INNER JOIN Setor S
+        INNER JOIN Medico M ON S.Supervisor = M.CRM
+    GROUP BY S.CodSetor, S.Nome, M.Nome
+    ORDER BY S.CodSetor;
+
+SELECT * FROM VisaoSetor;
+
+-- 26. Recuperar o código, o nome e o nome do supervisor de cada setor que tem  mais de um médico alocado. 
+SELECT CodSetor, NomeSetor, NomeSupervisor
+FROM VisaoSetor
+WHERE QuantidadeMedicos > 1
+ORDER BY CodSetor;
+
+-- 27. Criar uma visão contendo, para cada atendimento realizado na clínica, a  data do atendimento, o crm do médico, o nome do médico, o código do  paciente, o nome do paciente e o tipo do atendimento.
+CREATE VIEW VisaoAtendimento
+AS
+    SELECT A.Data, M.CRM, M.Nome AS Medico, P.CodPaciente, P.Nome AS Paciente, A.Tipo
+    FROM Atendimento A NATURAL INNER JOIN Medico M
+        INNER JOIN Paciente P ON A.CodPaciente = P.CodPaciente
+    ORDER BY A.Data, M.Crm;
+
+SELECT * FROM VisaoAtendimento;
+
+-- 28. Recuperar o código do paciente, o nome do paciente e o tipo da consulta  para cada atendimento realizado para o médico com CRM 1111-1.
+SELECT CodPaciente, Paciente, Tipo
+FROM VisaoAtendimento
+WHERE CRM = '1111-1'
+
+-- 29. Atualizar a operadora dos atendimentos feitos pela operadora Unimed para  Unimed Vida.
+UPDATE Atendimento
+SET Tipo = 'Unimed Vida'
+WHERE Tipo = 'Unimed';
+
+-- 30. Atualizar o supervisor do setor de Neurologia para o médico com CRM  1111-3.
+UPDATE Setor
+SET Supervisor = '1111-3'
+WHERE Nome = 'Neurologia';
+
+-- 31. Excluir todos os atendimentos realizados pelo médico com CRM 1111-1.
+DELETE FROM Atendimento
+WHERE CRM = '1111-1';
+
+-- 32. Excluir os telefones de todos os médicos da clinica.
+DELETE FROM TelefoneMedico;
+
+-- 33. Criar um índice para o atributo nome da tabela Médico.
+CREATE INDEX idx_nome_medico
+ON Medico(Nome);
