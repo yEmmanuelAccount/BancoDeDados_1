@@ -331,5 +331,71 @@ WHERE Salario = (
 
 /* ===== Agrupamento de Resultados: GROUP BY ===== */
     -- agrupa os resultados com base nos valores de uma ou mais colunas
-    -- todas as colunas na cláusula SELECT que não são usadas em funções agregadas devem estar na cláusula GROUP BY
+    -- para que as colunas sejam usadas no SELECT, elas devem estar no GROUP BY ou serem usadas em funções agregadas
     -- usar HAVING para filtrar grupos com base em condições
+
+-- Exemplo 36: Para cada departamento: seu código, a quantidade de funcionários e a média salarial.
+SELECT CodDepartamento, COUNT(*) AS NumFuncionarios, AVG(Salario) AS MediaSalarial
+FROM Empregado
+GROUP BY CodDepartamento;
+
+-- Exemplo 37: Para cada departamento: seu código, seu nome e a quantidade de funcionários.
+SELECT D.CodDepartamento, D.NomeDepartamento, COUNT(*) AS NumFuncionarios
+FROM Empregado E INNER JOIN Departamento D
+    ON E.CodDepartamento = D.CodDepartamento
+GROUP BY D.CodDepartamento, D.NomeDepartamento;
+
+-- Exemplo 38: Para cada departamento: seu código, seu nome e a quantidade de funcionários, mas recupere apenas os grupos com ao menos 4 funcionários.
+SELECT D.CodDepartamento, D.NomeDepartamento, COUNT(*) AS NumFuncionarios
+FROM Empregado E INNER JOIN Departamento D
+    ON E.CodDepartamento = D.CodDepartamento
+GROUP BY D.CodDepartamento, D.NomeDepartamento
+HAVING COUNT(*) >= 4;
+
+-- Exemplo 39: recupere o código e o nome dos projetos da empresa que têm mais de 2 empregado.
+SELECT P.CodProjeto, P.NomeProjeto, COUNT(*) AS NumEmpregados
+FROM Projeto P INNER JOIN TrabalhaProjeto TP
+    ON P.CodProjeto = TP.CodProjeto
+GROUP BY P.CodProjeto, P.NomeProjeto
+HAVING COUNT(*) > 2;
+
+-- Exemplo 40: Para cada empregado, recupere sua Matricula, Nome, e quantidade de dependentes que ele possui.
+SELECT E.Matricula, E.Nome, COUNT(D.NomeDependente) AS NumDependentes
+FROM Empregado E INNER JOIN Dependente D
+    ON E.Matricula = D.Empregado
+GROUP BY E.Matricula, E.Nome;
+
+SELECT E.Matricula, E.Nome, COUNT(D.NomeDependente) AS NumDependentes
+FROM Empregado E LEFT OUTER JOIN Dependente D
+    ON E.Matricula = D.Empregado
+GROUP BY E.Matricula, E.Nome
+ORDER BY NumDependentes DESC, E.Matricula ASC;
+
+/* ===== Exclusão de Dados ===== */
+    -- comando: DELETE
+    -- sintaxe: DELETE FROM [nome_da_tabela] WHERE [condição]
+
+-- Exemplo 41: Exclua as tuplas referentes aos projeto 3.
+DELETE FROM TrabalhaProjeto
+WHERE CodProjeto = 3;
+
+-- Exemplo 42: Exclua todos os dependentes.
+DELETE FROM Dependente;
+
+/* ===== Atualização de Dados ===== */
+    -- comando: UPDATE
+    -- sintaxe: UPDATE [nome_da_tabela] SET [coluna = novo_valor, ...] WHERE [condição]
+
+-- Exemplo 43: Atualize o gerente do departamento 2 para '1111-5'.
+UPDATE Departamento
+SET Gerente = '1111-5'
+WHERE CodDepartamento = 2;
+
+-- Exemplo 44: Atualize o salário dos empregados em mais 10%.
+UPDATE Empregado
+SET Salario = Salario * 1.10;
+
+/* ===== VISÕES ===== */
+    -- comando: CREATE VIEW
+    -- sintaxe: CREATE VIEW [nome_da_view] AS [consulta_sql]
+    -- para remover uma view: DROP VIEW [nome_da_view] [RESTRICT|CASCADE]
