@@ -397,5 +397,13 @@ SET Salario = Salario * 1.10;
 
 /* ===== VISÕES ===== */
     -- comando: CREATE VIEW
-    -- sintaxe: CREATE VIEW [nome_da_view] AS [consulta_sql]
+    -- sintaxe: CREATE VIEW [nome_da_view] AS [consulta_sql] --> (SELECT, FROM, WHERE)
     -- para remover uma view: DROP VIEW [nome_da_view] [RESTRICT|CASCADE]
+
+/* ===== Índices ===== */
+    -- comando: CREATE INDEX
+    -- sintaxe: CREATE INDEX [nome_do_índice] ON [nome_da_tabela]([coluna1, coluna2, ...])
+    -- para remover um índice: DROP INDEX [nome_do_índice] [RESTRICT|CASCADE]
+    
+    -- usado para melhorar a performance de consultas
+    -- é definido sobre o valor de um atributo
