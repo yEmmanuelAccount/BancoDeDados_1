@@ -2,6 +2,13 @@
     Os primeiros exemplos estão no arquivo apresentacaoComandos.sql e são apenas para introduzir comandos SQL.
 
     Os exemplos que estão nesse arquivo são para praticar o que foi visto em aula.
+
+    Para os exemplos a seguir, leve como base nas tabelas a seguir:
+    > Empregado (Matricula PK, Nome, Salario, Supervisor FK -> Empregado(Matricula), CodDepartamento FK -> Departamento(CodDepartamento))
+    > Departamento (CodDepartamento PK, Nome, Gerente FK -> Empregado(Matricula))
+    > Projeto (CodProjeto PK PK -> Projeto(CodProjeto), Nome, CodDepartamento )
+    > Dependente (Empregado PK FK -> Empregado(Matricula), NomeDepartamento PK, Parentesco)
+    > TrabalhaProjeto (Empregado PK FK -> Empregado(Matricula), CodProjeto PK FK -> Projeto(CodProjeto), NumHoras)
 */
 
 /* ===== Manipulação de Dados ===== */
@@ -206,13 +213,123 @@ WHERE EXISTS (
     -- operadores: INNER JOIN, LEFT JOIN, RIGHT JOIN, FULL JOIN
     -- a condição de junção é especificada no FROM
 
-/* ===== Equijunção (junção natural) ===== */
+/* ===== Equijunção ===== */
     -- operador: INNER JOIN
     -- a condição fica no FROM
-    -- a condição de junção é uma igualdade entre colunas de duas tabelas com o mesmo nome
+    -- sintaxe: [Tabela1] INNER JOIN [Tabela2] ON [Tabela1.Coluna = Tabela2.Coluna]
+    -- sintaxe2: [Tabela1] INNER JOIN [Tabela2] ON [Tabela1.Coluna = Tabela2.Coluna] AS [novos_nomes_das_Tabela2]
 
--- Exemplo 24: Recupere o Nome dos empregados que trabalham no departamento de Finanças.
+-- Exemplo 24: Recupere o Nome dos empregados que trabalham no departamento financeiro.
 SELECT E.Nome
 FROM Empregado E INNER JOIN Departamento D
     ON E.CodDepartamento = D.CodDepartamento
-WHERE D.Nome = 'Finanças';
+WHERE D.Nome = 'Financeiro'
+ORDER BY E.Nome ASC;
+
+/* ===== Junção Natural ===== */
+    -- operador: NATURAL INNER JOIN
+    -- a condição de junção é feita automaticamente com base nas colunas que possuem o mesmo nome em ambas as tabelas
+    -- sintaxe: [Tabela1] NATURAL INNER JOIN [Tabela2]
+
+-- Exemplo 25: Recupere o Nome dos empregados que trabalham no departamento financeiro.
+SELECT E.Nome
+FROM Empregado E NATURAL INNER JOIN Departamento D AS D(CodDepartamento, Nome, Departamento, Gerente)
+WHERE D.NomeDepartamento = 'Financeiro'
+ORDER BY E.Nome ASC;
+
+-- Exemplo 26: Recupere o Nome dos empregados que trabalham no departamento MaxLucro.
+SELECT E.Nome
+FROM TrabalhoProjeto TP NATURAL INNER JOIN Projeto P
+    INNER JOIN Empregado E ON TP.Empregado = E.Matricula
+WHERE P.NomeDepartamento = 'MaxLucro'
+
+-- Exemplo 27: Relacione cada empregado com os seus respectivos dependentes.
+SELECT *
+FROM Empregado E INNER JOIN Dependente D
+    ON E.Matricula = D.Empregado
+
+SELECT *
+FROM Empregado E LEFT OUTER JOIN Dependente D
+    ON E.Matricula = D.Empregado
+
+-- Exemplo 28: Recupere o Nome dos empregados que não possuem dependentes.
+SELECT E.Nome
+FROM Empregado
+WHERE Matricula NOT IN (
+    SELECT DISTINCT Empregado
+    FROM Dependente
+);
+
+-- Exemplo 29: Recupere o Nome dos empregados do departamento 1 que ganhe mais que algum empregado do departamento 2.
+SELECT E.Nome
+FROM Empregado E
+WHERE E.CodDepartamento = 1 AND E.Salario > SOME (
+    SELECT DISTINCT Salario
+    FROM Empregado
+    WHERE CodDepartamento = 2
+);
+
+-- Exemplo 30: Recupere o Nome dos empregados que possuem dependentes.
+SELECT E.Nome
+FROM Empregado E
+WHERE EXISTS (
+    SELECT *
+    FROM Dependente D
+    WHERE D.Empregado = E.Matricula
+);
+
+-- Exemplo 31: Recupere os gerentes que não possuem dependentes.
+SELECT E.Nome
+FROM Empregado E
+WHERE EXISTS (
+    SELECT *
+    FROM Departamento D
+    WHERE D.Gerente = E.Matricula
+) AND NOT EXISTS (
+    SELECT *
+    FROM Dependente Dep
+    WHERE Dep.Empregado = E.Matricula
+);
+
+/* ===== Funções Agregadas ===== */
+    -- funções: COUNT, SUM, AVG, MAX, MIN
+        -- COUNT:
+            -- COUNT(*), COUNT(coluna) --> quantidade de tuplas resultantes que não sejam iguais a NULL
+            -- COUNT(DISTINCT coluna) --> quantidade de valores distintos na coluna que não sejam NULL
+        -- SUM: soma dos valores da coluna
+        -- AVG: média dos valores da coluna
+        -- MAX: maior valor da coluna
+        -- MIN: menor valor da coluna
+
+-- Exemplo 32: Calcule quantos empregados trabalham no departamento 2.
+SELECT COUNT(*) AS NumEmpregados
+FROM Empregado E
+WHERE E.CodDepartamento = 2;
+
+-- Exemplo 33: Calcule a quantidade de empregados que têm supervisor.
+SELECT COUNT(*) AS Total 
+FROM Empregado
+WHERE Supervisor IS NOT NULL;
+
+SELECT COUNT(Supervisor) AS Total
+FROM Empregado;
+
+-- Exemplo 34: Recupere o total da folha de pagamento, o menor salário, o maior salário e a média salarial.
+SELECT SUM(Salario) AS TotalFolhaPagamento,
+       MIN(Salario) AS MenorSalario,
+       MAX(Salario) AS MaiorSalario,
+       AVG(Salario) AS MediaSalarial
+FROM Empregado;
+
+-- Exemplo 35: Qual o empregado com o menor salário?
+SELECT Nome, Salario
+FROM Empregado
+WHERE Salario = (
+    SELECT MIN(Salario)
+    FROM Empregado
+);
+
+/* ===== Agrupamento de Resultados: GROUP BY ===== */
+    -- agrupa os resultados com base nos valores de uma ou mais colunas
+    -- todas as colunas na cláusula SELECT que não são usadas em funções agregadas devem estar na cláusula GROUP BY
+    -- usar HAVING para filtrar grupos com base em condições
